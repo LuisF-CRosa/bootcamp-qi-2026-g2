@@ -1,3 +1,67 @@
+CREATE TABLE sample_entity_status(
+    id		                        SERIAL PRIMARY KEY,
+    enumerator                      VARCHAR(50) NOT NULL,
+    created_at                      TIMESTAMP NOT NULL DEFAULT(NOW()),
+    UNIQUE(enumerator)
+);
+
+INSERT INTO sample_entity_status (enumerator) VALUES
+('created'),
+('pending'),
+('success'),
+('failed');
+
+CREATE TABLE sample_entity(
+    id                              SERIAL PRIMARY KEY,
+    sample_entity_key               CHAR(36) NOT NULL,
+    status_id                       INTEGER NOT NULL REFERENCES sample_entity_status(id),
+    sample_entity_data              JSONB NOT NULL,
+    name                            VARCHAR(255) NOT NULL,
+    email                           VARCHAR(255) NOT NULL,
+    document_number                 CHAR(14) NOT NULL,
+    birthdate                       DATE NOT NULL,
+    counter                         INTEGER NOT NULL,
+    created_at                      TIMESTAMP NOT NULL DEFAULT(NOW()),
+    UNIQUE(sample_entity_key),
+    UNIQUE(document_number),
+    UNIQUE(email)
+);
+
+CREATE TABLE sample_entity_status_event(
+    id                              SERIAL PRIMARY KEY,
+    sample_entity_id                INTEGER NOT NULL REFERENCES sample_entity(id),
+    status_id                       INTEGER NOT NULL REFERENCES sample_entity_status(id),
+    event_datetime                  TIMESTAMP NOT NULL,
+    created_at                      TIMESTAMP NOT NULL DEFAULT(NOW())
+);
+
+-- Republica estudantil: modelo novo. As tabelas sample_entity acima
+-- permanecem para que os exemplos e testes da API base continuem funcionando.
+-- Valores monetarios sao inteiros em centavos; nenhuma coluna usa FLOAT.
+
+CREATE TABLE client (
+    id                          BIGSERIAL PRIMARY KEY,
+    client_key                  CHAR(36) NOT NULL UNIQUE,
+    client_type                 VARCHAR(30) NOT NULL,
+    name                        VARCHAR(255) NOT NULL,
+    email                       VARCHAR(255) NOT NULL UNIQUE,
+    document_number             CHAR(14) UNIQUE,
+    birthdate                   DATE,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT client_type_valid CHECK (
+        client_type IN ('PERSONAL_CLIENT', 'INSTITUTIONAL_CLIENT')
+    ),
+    CONSTRAINT client_documents_by_type CHECK (
+        (client_type = 'PERSONAL_CLIENT'
+            AND document_number IS NOT NULL AND birthdate IS NOT NULL)
+        OR
+        (client_type = 'INSTITUTIONAL_CLIENT'
+            AND document_number IS NULL AND birthdate IS NULL)
+    ),
+    CONSTRAINT client_name_not_blank CHECK (LENGTH(TRIM(name)) > 0),
+    CONSTRAINT client_email_not_blank CHECK (LENGTH(TRIM(email)) > 0)
+);
+
 -- A primeira versao comporta apenas uma republica.
 CREATE UNIQUE INDEX one_institutional_client
     ON client (client_type)
