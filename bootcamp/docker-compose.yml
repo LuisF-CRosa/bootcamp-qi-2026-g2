@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: bootcamp_db
+    restart: always
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: bootcamp_db
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/database.sql:/docker-entrypoint-initdb.d/database.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bootcamp_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+  db_test:
+    image: postgres:15-alpine
+    container_name: bootcamp_test_db
+    restart: always
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: bootcamp_test_db
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bootcamp_test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+  api:
+    build: .
+    container_name: bootcamp_api
+    restart: always
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres_password@db:5432/bootcamp_db
+
+      TEST_DATABASE_URL: postgresql://postgres:postgres_password@db_test:5432/bootcamp_test_db
+
+      INTERNAL_TOKEN: secret-token
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+      db_test:
+        condition: service_healthy
+
+
+volumes:
+  postgres_data:
